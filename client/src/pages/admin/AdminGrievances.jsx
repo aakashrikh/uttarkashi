@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { socket } from '../../lib/socket';
+import { getFullUrl } from '../../lib/api';
 
 const AdminGrievances = () => {
     const [grievances, setGrievances] = useState([]);
@@ -59,12 +60,12 @@ const AdminGrievances = () => {
                                 <div className="flex flex-wrap items-center gap-3 border-t border-slate-50 pt-3">
                                     {g.fileUrls && g.fileUrls.length > 0 ? (
                                         g.fileUrls.map((url, idx) => (
-                                            <a key={idx} href={url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-xs font-bold text-blue-600 bg-blue-50 px-3 py-2 rounded-lg hover:bg-blue-100 transition border border-blue-100">
+                                            <a key={idx} href={getFullUrl(url)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-xs font-bold text-blue-600 bg-blue-50 px-3 py-2 rounded-lg hover:bg-blue-100 transition border border-blue-100">
                                                 <span>📎</span> Document {idx + 1}
                                             </a>
                                         ))
                                     ) : g.fileUrl ? (
-                                        <a href={g.fileUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-xs font-bold text-blue-600 bg-blue-50 px-3 py-2 rounded-lg hover:bg-blue-100 transition border border-blue-100">
+                                        <a href={getFullUrl(g.fileUrl)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-xs font-bold text-blue-600 bg-blue-50 px-3 py-2 rounded-lg hover:bg-blue-100 transition border border-blue-100">
                                             <span>📎</span> View Document
                                         </a>
                                     ) : (

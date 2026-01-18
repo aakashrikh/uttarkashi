@@ -3,11 +3,15 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
 import dotenv from 'dotenv';
-
+import mongoose from 'mongoose';
 import multer from 'multer';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
+
+import { storage } from './cloudinary.js';
+import { Grievance } from './models.js';
+import { setupSocketHandlers } from './socketHandler.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -29,39 +33,25 @@ const io = new Server(httpServer, {
     }
 });
 
-import { setupSocketHandlers } from './socketHandler.js';
-
 app.use(cors({
     origin: allowedOrigins,
     credentials: true
 }));
 app.use(express.json());
 
+// MongoDB Connection
+mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/sankal-samwad')
+    .then(() => console.log('✅ Connected to MongoDB'))
+    .catch(err => console.error('❌ MongoDB Connection Error:', err));
+
+
 // Basic health check
 app.get('/', (req, res) => {
     res.send('Sankal Samwad API is running');
 });
 
-// Configure Multer for file uploads
-const uploadDir = path.join(__dirname, 'uploads');
-if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir, { recursive: true });
-}
-
-const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        cb(null, uploadDir);
-    },
-    filename: function (req, file, cb) {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, uniqueSuffix + '-' + file.originalname);
-    }
-});
-
+// Configure Multer with Cloudinary Storage
 const upload = multer({ storage: storage });
-
-// Serve uploaded files statically
-app.use('/uploads', express.static(uploadDir));
 
 // Serve React App Static Files
 const distPath = path.join(__dirname, 'dist');
@@ -74,51 +64,59 @@ app.post('/api/upload', upload.single('file'), (req, res) => {
     if (!req.file) {
         return res.status(400).send('No file uploaded.');
     }
-    // Return the URL to access the file
-    // Return the URL to access the file
-    const fileUrl = `/uploads/${req.file.filename}`;
-    res.json({ url: fileUrl, filename: req.file.filename, originalName: req.file.originalname });
+    // Cloudinary returns the full URL in `req.file.path`
+    res.json({ url: req.file.path, filename: req.file.filename, originalName: req.file.originalname });
 });
 
-// Grievance Submission Endpoint (Offline Mode)
-import { store, saveData } from './store.js';
+// Grievance Submission Endpoint
+app.post('/api/grievance', upload.array('files', 10), async (req, res) => {
+    try {
+        const { name, mobile, email, district, block, village, message } = req.body;
 
-app.post('/api/grievance', upload.array('files', 10), (req, res) => {
-    const { name, mobile, email, district, block, village, message } = req.body;
+        // Handle Multiple Files
+        let fileUrls = [];
+        if (req.files && req.files.length > 0) {
+            fileUrls = req.files.map(file => file.path); // Cloudinary URL
+        }
 
-    // Handle Multiple Files
-    let fileUrls = [];
-    if (req.files && req.files.length > 0) {
-        fileUrls = req.files.map(file => `/uploads/${file.filename}`);
+        // Backend compatibility
+        const mainFileUrl = fileUrls.length > 0 ? fileUrls[0] : null;
+
+        const grievance = new Grievance({
+            id: Date.now().toString(), // Keep ID for frontend compatibility
+            citizenName: name,
+            citizenMobile: mobile,
+            email: email,
+            district: district || 'Uttarkashi',
+            block: block || 'N/A',
+            village: village || 'N/A',
+            message: message,
+            fileUrl: mainFileUrl,
+            fileUrls: fileUrls,
+            timestamp: new Date()
+        });
+
+        await grievance.save();
+        console.log(`[Grievance] New grievance from ${name} saved to DB`);
+
+        // Notify DM if connected (We need to refactor store.dmSocketId logic to be persistent or just broadcast to 'dm' room)
+        // For now, let's keep it simple: emit to all for verification, or we need to manage socket rooms properly.
+        // Better: SocketHandler manages rooms. Here we can use io.emit for simplicity or rely on client polling/socket logic.
+        // Actually, let's just emit 'grievance_update' to everyone or a specific room?
+        // To keep it compatible with existing socket logic, we should probably fetch from DB and emit.
+        // But socketHandler has the logic.
+        
+        // Let's grab all grievances and emit? (Might be heavy)
+        // Optimization: Just emit the new one and let frontend add it? 
+        // Current frontend expects full list in `grievance_update`.
+        const allGrievances = await Grievance.find().sort({ timestamp: -1 });
+        io.emit('grievance_update', allGrievances); 
+
+        res.json({ success: true, message: "Grievance submitted successfully" });
+    } catch (error) {
+        console.error("Grievance Error:", error);
+        res.status(500).json({ success: false, message: "Failed to submit grievance" });
     }
-
-    // Backend compatibility: fileUrl is the first file, fileUrls is all of them
-    const mainFileUrl = fileUrls.length > 0 ? fileUrls[0] : null;
-
-    const grievance = {
-        id: Date.now().toString(),
-        citizenName: name,
-        citizenMobile: mobile,
-        email: email,
-        district: district || 'Uttarkashi',
-        block: block || 'N/A',
-        village: village || 'N/A',
-        message: message,
-        fileUrl: mainFileUrl, // Legacy support
-        fileUrls: fileUrls,   // New multi-file support
-        timestamp: new Date().toISOString()
-    };
-
-    store.grievances.unshift(grievance);
-    saveData();
-    console.log(`[Grievance] New grievance from ${name} (${mobile}) with ${fileUrls.length} files`);
-
-    // Notify DM if connected (or will see on refresh)
-    if (store.dmSocketId) {
-        io.to(store.dmSocketId).emit('grievance_update', store.grievances);
-    }
-
-    res.json({ success: true, message: "Grievance submitted successfully" });
 });
 
 // Setup Socket Handlers
