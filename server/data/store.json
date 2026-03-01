@@ -1,36 +1,6 @@
 {
   "completedSessions": [
     {
-      "id": "1768721801130",
-      "citizenId": "AznGNlK6GmLvARrSAAAL",
-      "dmId": "Qchr9eCBnNEQN2RIAAAP",
-      "startTime": "2026-01-18T07:36:41.132Z",
-      "endTime": "2026-01-18T07:36:41.132Z",
-      "citizenName": "aakash",
-      "citizenMobile": "8006435315",
-      "district": "Uttarkashi",
-      "block": "Bhatwadi",
-      "village": "Kyark",
-      "messages": [],
-      "citizenRating": 4,
-      "dmRating": null
-    },
-    {
-      "id": "1768721712599",
-      "citizenId": "sYOzexuEgOWVkQCtAAAH",
-      "dmId": "2r2Pc8J3SQBI9uJfAAAF",
-      "startTime": "2026-01-18T07:35:12.607Z",
-      "endTime": "2026-01-18T07:35:12.607Z",
-      "citizenName": "aakash",
-      "citizenMobile": "8006435315",
-      "district": "Uttarkashi",
-      "block": "Bhatwadi",
-      "village": "Jaspur",
-      "messages": [],
-      "citizenRating": null,
-      "dmRating": null
-    },
-    {
       "id": "1768487082462",
       "citizenId": "DS0ug9PKzWC00MHAAAEq",
       "dmId": "aK7bG2S7mA_WphEoAAEs",
@@ -829,7 +799,7 @@
     }
   ],
   "manualQueueTime": 10,
-  "dmLastOnline": "2026-01-18T07:36:41.131Z",
+  "dmLastOnline": "2026-03-01T19:24:32.926Z",
   "grievances": [
     {
       "id": "1768486557705",

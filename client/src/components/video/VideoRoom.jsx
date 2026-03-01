@@ -4,7 +4,6 @@ import { socket } from '../../lib/socket';
 import { useAuth } from '../../context/AuthContext';
 
 import RatingModal from '../common/RatingModal';
-import { API_URL, getFullUrl } from '../../lib/api';
 
 const VideoRoom = () => {
     const { id: targetId } = useParams(); // ID of the person we are connecting to
@@ -148,24 +147,22 @@ const VideoRoom = () => {
         sendMessage('text', newMessage);
     };
 
-
     const handleFileUpload = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
 
         const formData = new FormData();
         formData.append('file', file);
-            
+
         try {
+            const API_URL = import.meta.env.VITE_API_URL || '';
             const res = await fetch(`${API_URL}/api/upload`, {
                 method: 'POST',
                 body: formData
             });
             const data = await res.json();
-            // Send full URL in message for receiver
-            sendMessage('file', file.name, getFullUrl(data.url));
+            sendMessage('file', file.name, data.url);
         } catch (error) {
-
             console.error("Upload failed", error);
             alert("File upload failed");
         }
@@ -341,7 +338,7 @@ const VideoRoom = () => {
                                         ) : (
                                             <div className="flex items-center gap-2">
                                                 <span className="text-2xl">📄</span>
-                                                <a href={getFullUrl(msg.url)} target="_blank" rel="noopener noreferrer" className="underline truncate">
+                                                <a href={msg.url} target="_blank" rel="noopener noreferrer" className="underline truncate">
                                                     {msg.content}
                                                 </a>
                                             </div>

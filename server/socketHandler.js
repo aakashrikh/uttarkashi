@@ -1,5 +1,4 @@
 import { store, saveData } from './store.js';
-import { Session, Grievance } from './models.js'; // Import MongoDB Models
 
 export const setupSocketHandlers = (io) => {
     io.on('connection', (socket) => {
@@ -133,7 +132,7 @@ export const setupSocketHandlers = (io) => {
             store.activeSessions[sessionId].messages.push(message);
         });
 
-        socket.on('end_call', async ({ target }) => {
+        socket.on('end_call', ({ target }) => {
             // Identify the correct citizen and DM
             let citizenId = target;
             let dmId = socket.id;
@@ -161,80 +160,77 @@ export const setupSocketHandlers = (io) => {
             if (store.users[citizenId]?.role === 'citizen') {
                 const activeSessionId = [citizenId, dmId].sort().join('-');
 
-                try {
-                    const session = new Session({
-                        sessionId: sessionId,
-                        citizenName: store.users[citizenId]?.name || 'Unknown',
-                        citizenMobile: store.users[citizenId]?.mobile || 'N/A',
-                        startTime: new Date(), 
-                        endTime: new Date(),
-                        duration: '00:00', 
-                        notes: '',
-                        messages: store.activeSessions[activeSessionId]?.messages || []
-                    });
-                    
-                    await session.save();
-                    console.log(`[Session] Saved session ${sessionId} to DB`);
-                } catch (err) {
-                    console.error("Error saving session:", err);
-                }
+                // Log Session
+                const sessionData = {
+                    id: sessionId,
+                    citizenId: citizenId,
+                    dmId: dmId,
+                    startTime: new Date().toISOString(), // Mock start time
+                    endTime: new Date().toISOString(),
+                    citizenName: store.users[citizenId]?.name || 'Unknown',
+                    citizenMobile: store.users[citizenId]?.mobile || 'N/A',
+                    district: store.users[citizenId]?.district || 'N/A',
+                    block: store.users[citizenId]?.block || 'N/A',
+                    village: store.users[citizenId]?.village || 'N/A',
+                    messages: store.activeSessions[activeSessionId]?.messages || [],
+                    citizenRating: null, // Rating given BY Citizen
+                    dmRating: null       // Rating given BY DM
+                };
+
+                store.completedSessions.unshift(sessionData); // Add to beginning
 
                 // Cleanup active session
                 delete store.activeSessions[activeSessionId];
+
+                saveData(); // Persist changes
             }
         });
 
-        socket.on('submit_rating', async ({ sessionId, rating, role }) => {
-            try {
-                const update = {};
-                if (role === 'citizen') update.citizenRating = rating;
-                else if (role === 'dm') update.dmRating = rating;
-
-                await Session.findOneAndUpdate({ sessionId: sessionId }, update);
+        socket.on('submit_rating', ({ sessionId, rating, role }) => {
+            const session = store.completedSessions.find(s => s.id === sessionId);
+            if (session) {
+                if (role === 'citizen') {
+                    session.citizenRating = rating;
+                } else if (role === 'dm') {
+                    session.dmRating = rating;
+                }
+                saveData();
                 console.log(`[Rating] Session ${sessionId} rated by ${role}: ${rating} stars`);
-            } catch (err) {
-                console.error("Error submitting rating:", err);
             }
         });
 
         // --- Logs & Admin Features ---
-        socket.on('get_logs', async () => {
+        socket.on('get_logs', () => {
             if (store.users[socket.id]?.role === 'dm') {
-                const sessions = await Session.find().sort({ endTime: -1 }).limit(50);
-                socket.emit('logs_update', sessions);
+                socket.emit('logs_update', store.completedSessions);
             }
         });
 
-        socket.on('get_grievances', async () => {
+        socket.on('get_grievances', () => {
             if (store.users[socket.id]?.role === 'dm') {
-                const grievances = await Grievance.find().sort({ timestamp: -1 });
-                socket.emit('grievance_update', grievances);
+                socket.emit('grievance_update', store.grievances);
             }
         });
 
-        socket.on('update_grievance', async ({ id, remark, status }) => {
+        socket.on('update_grievance', ({ id, remark, status }) => {
             if (store.users[socket.id]?.role === 'dm') {
-                try {
-                    const grievance = await Grievance.findOne({ id: id });
-                    if (grievance) {
-                        if (remark !== undefined) grievance.remark = remark;
-                        if (status !== undefined) grievance.status = status;
-                        await grievance.save();
+                const grievance = store.grievances.find(g => g.id === id);
+                if (grievance) {
+                    if (remark !== undefined) grievance.remark = remark;
+                    if (status !== undefined) grievance.status = status; // e.g., 'Resolved', 'Pending'
 
-                        // API Update for all DMs
-                        const grievances = await Grievance.find().sort({ timestamp: -1 });
-                        socket.emit('grievance_update', grievances);
-                    }
-                } catch (err) {
-                    console.error("Error updating grievance:", err);
+                    saveData();
+                    // Push update to DM
+                    socket.emit('grievance_update', store.grievances);
+                    console.log(`[Grievance] Updated ${id}: Status=${status}, Remark=${remark}`);
                 }
             }
         });
 
-        socket.on('get_my_history', async () => {
+        socket.on('get_my_history', () => {
             const myMobile = store.users[socket.id]?.mobile;
             if (myMobile) {
-                const history = await Session.find({ citizenMobile: myMobile }).sort({ endTime: -1 });
+                const history = store.completedSessions.filter(s => s.citizenMobile === myMobile);
                 socket.emit('history_update', history);
             }
         });
@@ -277,27 +273,23 @@ export const setupSocketHandlers = (io) => {
     });
 };
 
-async function notifyDmOfQueue(io) {
+function notifyDmOfQueue(io) {
     if (store.dmSocketId) {
         console.log(`Notifying DM (${store.dmSocketId}) of queue update. Queue length: ${store.waitingQueue.length}`);
-        
-        // Use Promise.all to fetch ratings for each user in queue
-        const queueDetails = await Promise.all(store.waitingQueue.map(async id => {
+        // Populate queue with user details AND last rating
+        const queueDetails = store.waitingQueue.map(id => {
             const user = store.users[id];
             if (!user) return null;
 
-            // Fetch last session rating from DB
-            const lastSession = await Session.findOne({ citizenMobile: user.mobile, citizenRating: { $exists: true } })
-                                           .sort({ endTime: -1 });
-
+            // Find last session for this mobile number to get citizen's rating
+            const lastSession = store.completedSessions.find(s => s.citizenMobile === user.mobile && s.citizenRating);
             return {
                 ...user,
-                lastCitizenRating: lastSession ? lastSession.citizenRating : null, 
-                lastDmRating: lastSession ? lastSession.dmRating : null 
+                lastCitizenRating: lastSession ? lastSession.citizenRating : null, // The rating THEY gave
+                lastDmRating: lastSession ? lastSession.dmRating : null // The rating DM gave THEM (if needed)
             };
-        }));
-
-        io.to(store.dmSocketId).emit('queue_update_dm', queueDetails.filter(Boolean));
+        }).filter(Boolean);
+        io.to(store.dmSocketId).emit('queue_update_dm', queueDetails);
     } else {
         console.log("Cannot notify DM: No DM socket ID registered.");
     }
