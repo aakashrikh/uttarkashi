@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { useLanguage } from '../../context/LanguageContext';
 
 import { uttarkashiData } from '../../data/uttarkashi_data';
 
@@ -18,6 +19,7 @@ const CitizenLogin = () => {
     const [otp, setOtp] = useState('');
 
     const { loginUser } = useAuth();
+    const { t } = useLanguage();
     const navigate = useNavigate();
 
     // Reset village when block changes
@@ -39,7 +41,7 @@ const CitizenLogin = () => {
         if (mobile.length === 10 && name && selectedBlock && selectedVillage) {
             setStep(2);
         } else {
-            alert("Please fill all fields correctly");
+            alert(t('fillFieldsAlert'));
         }
     };
 
@@ -57,32 +59,32 @@ const CitizenLogin = () => {
             });
             navigate('/dashboard');
         } else {
-            alert("Invalid OTP");
+            alert(t('invalidOtpAlert'));
         }
     };
 
     return (
         <div className="p-6">
             <div className="mb-8 text-center">
-                <h2 className="text-2xl font-bold text-gray-800">Citizen Login</h2>
-                <p className="text-gray-500 text-sm">Verify your identity to connect</p>
+                <h2 className="text-2xl font-bold text-gray-800">{t('citizenLogin')}</h2>
+                <p className="text-gray-500 text-sm">{t('verifyIdentity')}</p>
             </div>
 
             {step === 1 ? (
                 <form onSubmit={handleSendOtp} className="space-y-4">
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">{t('fullName')}</label>
                         <input
                             type="text"
                             required
                             className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
                             value={name}
                             onChange={e => setName(e.target.value)}
-                            placeholder="Enter your name"
+                            placeholder={t('enterName')}
                         />
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Mobile Number</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">{t('mobileNumber')}</label>
                         <input
                             type="tel"
                             required
@@ -90,14 +92,14 @@ const CitizenLogin = () => {
                             className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
                             value={mobile}
                             onChange={e => setMobile(e.target.value)}
-                            placeholder="10-digit mobile number"
+                            placeholder={t('mobilePlaceholder')}
                         />
                     </div>
 
                     {/* Location Dropdowns */}
                     <div className="grid grid-cols-1 gap-4">
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">District</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">{t('district')}</label>
                             <select
                                 disabled
                                 className="w-full px-4 py-2 border rounded-lg bg-gray-100 text-gray-600 outline-none cursor-not-allowed"
@@ -108,14 +110,14 @@ const CitizenLogin = () => {
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Block</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">{t('block')}</label>
                             <select
                                 required
                                 className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 outline-none bg-white"
                                 value={selectedBlock}
                                 onChange={handleBlockChange}
                             >
-                                <option value="">Select Block</option>
+                                <option value="">{t('selectBlock')}</option>
                                 {uttarkashiData.blocks.map(block => (
                                     <option key={block.name} value={block.name}>{block.name}</option>
                                 ))}
@@ -123,7 +125,7 @@ const CitizenLogin = () => {
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Village</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">{t('village')}</label>
                             <select
                                 required
                                 disabled={!selectedBlock}
@@ -131,7 +133,7 @@ const CitizenLogin = () => {
                                 value={selectedVillage}
                                 onChange={e => setSelectedVillage(e.target.value)}
                             >
-                                <option value="">Select Village</option>
+                                <option value="">{t('selectVillage')}</option>
                                 {availableVillages.map(village => (
                                     <option key={village} value={village}>{village}</option>
                                 ))}
@@ -142,16 +144,16 @@ const CitizenLogin = () => {
                         type="submit"
                         className="w-full bg-primary-600 text-white py-3 rounded-lg font-semibold hover:bg-primary-700 transition"
                     >
-                        Send OTP
+                        {t('sendOtp')}
                     </button>
                 </form>
             ) : (
                 <form onSubmit={handleVerifyOtp} className="space-y-4">
                     <div className="text-center text-sm text-gray-600 mb-4">
-                        OTP sent to +91 {mobile}
+                        {t('otpSentTo')} +91 {mobile}
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Enter OTP</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">{t('enterOtp')}</label>
                         <input
                             type="text"
                             required
@@ -159,22 +161,22 @@ const CitizenLogin = () => {
                             className="w-full text-center text-2xl tracking-widest px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
                             value={otp}
                             onChange={e => setOtp(e.target.value)}
-                            placeholder="0000"
+                            placeholder={t('otpPlaceholder')}
                         />
-                        <p className="text-xs text-gray-400 mt-1 text-center">Use any 4 digits for demo</p>
+                        <p className="text-xs text-gray-400 mt-1 text-center">{t('otpDemo')}</p>
                     </div>
                     <button
                         type="submit"
                         className="w-full bg-primary-600 text-white py-3 rounded-lg font-semibold hover:bg-primary-700 transition"
                     >
-                        Verify & Login
+                        {t('verifyLogin')}
                     </button>
                     <button
                         type="button"
                         onClick={() => setStep(1)}
                         className="w-full text-primary-600 text-sm py-2 hover:underline"
                     >
-                        Change Details
+                        {t('changeDetails')}
                     </button>
                 </form>
             )}

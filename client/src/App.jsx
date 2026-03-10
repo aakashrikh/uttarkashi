@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { LanguageProvider } from './context/LanguageContext';
 
 import PublicLayout from './components/layout/PublicLayout';
 import AdminLayout from './components/layout/AdminLayout';
@@ -28,6 +29,7 @@ const ProtectedRoute = ({ children, allowedRole }) => {
 
 function App() {
     return (
+        <LanguageProvider>
         <AuthProvider>
             <Router>
                 <div className="min-h-screen text-slate-900 font-sans">
@@ -81,6 +83,7 @@ function App() {
                 </div>
             </Router>
         </AuthProvider>
+        </LanguageProvider>
     );
 }
 

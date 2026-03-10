@@ -104,15 +104,30 @@ const AdminDashboard = () => {
                         <p className="text-slate-500 font-medium mt-1">Here is what's happening in your district today.</p>
                     </div>
 
-                    {/* Status Pills */}
-                    <div className="flex items-center gap-3 bg-white/50 p-2 rounded-2xl border border-white/60">
-                        <div className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all ${isConnected ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                            <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></span>
-                            <span className="text-xs font-bold uppercase tracking-wider">{isConnected ? 'System Online' : 'Offline'}</span>
+                    {/* Status & Toggle */}
+                    <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-3 bg-white/50 p-2 rounded-2xl border border-white/60">
+                            <div className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all ${isConnected ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></span>
+                                <span className="text-xs font-bold uppercase tracking-wider">{isConnected ? 'System Online' : 'Offline'}</span>
+                            </div>
                         </div>
-                        <div className={`flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-100 ${dmStatus === 'online' ? 'bg-blue-50 text-blue-700' : 'bg-gray-100 text-gray-600'}`}>
-                            <span className="text-xs font-bold uppercase tracking-wider">{dmStatus}</span>
-                        </div>
+
+                        {/* Go Online / Go Offline Toggle */}
+                        <button
+                            onClick={() => {
+                                const newStatus = dmStatus === 'online' ? 'offline' : 'online';
+                                socket.emit('set_dm_status', { status: newStatus });
+                            }}
+                            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all shadow-lg active:scale-95 ${
+                                dmStatus === 'online'
+                                    ? 'bg-green-500 text-white hover:bg-red-500 shadow-green-500/30 hover:shadow-red-500/30'
+                                    : 'bg-gray-400 text-white hover:bg-green-500 shadow-gray-400/30 hover:shadow-green-500/30'
+                            }`}
+                        >
+                            <span className={`w-2.5 h-2.5 rounded-full ${dmStatus === 'online' ? 'bg-white animate-pulse' : 'bg-white/60'}`}></span>
+                            <span>{dmStatus === 'online' ? 'Go Offline' : 'Go Online'}</span>
+                        </button>
                     </div>
                 </div>
 
