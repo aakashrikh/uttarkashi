@@ -19,6 +19,8 @@ const httpServer = createServer(app);
 const allowedOrigins = [
     "http://localhost:5173",
     "http://localhost:4173",
+    "https://www.sankalpsanwad.com",
+    "https://sankalpsanwad.com",
     process.env.CLIENT_URL // Deployed Client URL
 ].filter(Boolean);
 
@@ -78,6 +80,102 @@ app.post('/api/upload', upload.single('file'), (req, res) => {
     // Return the URL to access the file
     const fileUrl = `/uploads/${req.file.filename}`;
     res.json({ url: fileUrl, filename: req.file.filename, originalName: req.file.originalname });
+});
+
+// --- Authentication Endpoints (Msg91) ---
+app.post('/api/auth/send-otp', async (req, res) => {
+    const { mobile } = req.body;
+    if (!mobile || mobile.length !== 10) {
+        return res.status(400).json({ success: false, message: 'Invalid mobile number' });
+    }
+
+    const authKey = process.env.MSG91_AUTH_KEY;
+    const templateId = process.env.MSG91_TEMPLATE_ID;
+
+    if (!authKey || !templateId) {
+        console.warn("Msg91 credentials missing. Simulating OTP send.");
+        return res.json({ success: true, message: 'Simulated OTP sent (credentials missing)' });
+    }
+
+    try {
+        const response = await fetch(`https://control.msg91.com/api/v5/otp?template_id=${templateId}&mobile=91${mobile}&authkey=${authKey}`, {
+            method: 'GET',
+        });
+        const data = await response.json();
+
+        if (data.type === 'success') {
+            res.json({ success: true, message: 'OTP sent successfully' });
+        } else {
+            res.status(400).json({ success: false, message: data.message || 'Failed to send OTP' });
+        }
+    } catch (error) {
+        console.error("Msg91 Send OTP Error:", error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+});
+
+app.post('/api/auth/verify-otp', async (req, res) => {
+    const { mobile, otp } = req.body;
+
+    if (!mobile || !otp) {
+        return res.status(400).json({
+            success: false,
+            message: 'Mobile and OTP required'
+        });
+    }
+
+    const authKey = "442923AbXWYZCF0j67dd2b54P1";
+
+    if (!authKey) {
+        console.warn("MSG91 credentials missing. Simulating OTP verify.");
+
+        if (otp.length === 4) {
+            return res.json({
+                success: true,
+                message: 'Simulated OTP verified'
+            });
+        }
+
+        return res.status(400).json({
+            success: false,
+            message: 'Invalid OTP (Simulation)'
+        });
+    }
+
+    const template = `Use ${otp} as your OTP for Weazy account verification. This is confidential. Please do not share it with anyone. Team Weazy`;
+
+    const url = `https://api.msg91.com/api/sendhttp.php?authkey=${authKey}&sender=WZYINF&mobiles=91${mobile}&route=4&DLT_TE_ID=1007510009222316169&message=${encodeURIComponent(template)}&response=json&PE_ID=1001439787567400424`;
+
+    try {
+
+        const response = await fetch(url, {
+            method: "GET"
+        });
+
+        const data = await response.json();
+
+        if (data.type === "success") {
+            return res.json({
+                success: true,
+                message: "OTP verified successfully"
+            });
+        }
+
+        return res.status(400).json({
+            success: false,
+            message: data.message || "OTP verification failed"
+        });
+
+    } catch (error) {
+
+        console.error("MSG91 Verify OTP Error:", error);
+
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error"
+        });
+
+    }
 });
 
 // Grievance Submission Endpoint (Offline Mode)

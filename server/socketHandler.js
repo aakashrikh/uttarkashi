@@ -72,6 +72,19 @@ export const setupSocketHandlers = (io) => {
             socket.emit('dm_status_update', { status: store.dmStatus, lastOnline: store.dmLastOnline });
         });
 
+        // Set DM Status (manual toggle by DM)
+        socket.on('set_dm_status', ({ status }) => {
+            if (store.users[socket.id]?.role === 'dm') {
+                store.dmStatus = status; // 'online' or 'offline'
+                if (status === 'online') {
+                    store.dmLastOnline = new Date().toISOString();
+                }
+                io.emit('dm_status_update', { status: store.dmStatus, lastOnline: store.dmLastOnline });
+                saveData();
+                console.log(`[DM Status] Manually set to: ${status}`);
+            }
+        });
+
         socket.on('call_user', ({ targetSocketId }) => {
             // DM initiates call
             if (store.users[socket.id]?.role === 'dm') {

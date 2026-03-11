@@ -1,10 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { socket } from '../../lib/socket';
-
 import { useAuth } from '../../context/AuthContext';
-
-
 const AdminDashboard = () => {
     const navigate = useNavigate();
     const { isRegistered, isConnected } = useAuth();

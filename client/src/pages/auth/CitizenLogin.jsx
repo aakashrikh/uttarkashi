@@ -36,10 +36,26 @@ const CitizenLogin = () => {
         }
     };
 
-    const handleSendOtp = (e) => {
+    const handleSendOtp = async (e) => {
         e.preventDefault();
         if (mobile.length === 10 && name && selectedBlock && selectedVillage) {
-            setStep(2);
+            try {
+                const API_URL = import.meta.env.VITE_API_URL || '';
+                const response = await fetch(`${API_URL}/api/auth/send-otp`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ mobile })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    setStep(2);
+                } else {
+                    alert(data.message || 'Failed to send OTP');
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Error sending OTP. Please try again later.');
+            }
         } else {
             alert(t('fillFieldsAlert'));
         }
@@ -47,19 +63,31 @@ const CitizenLogin = () => {
 
     const handleVerifyOtp = async (e) => {
         e.preventDefault();
-        // Mock OTP verification
-        if (otp.length === 4) {
-            await loginUser({
-                name,
-                mobile,
-                district: selectedDistrict,
-                block: selectedBlock,
-                village: selectedVillage,
-                role: 'citizen'
+        try {
+            const API_URL = import.meta.env.VITE_API_URL || '';
+            const response = await fetch(`${API_URL}/api/auth/verify-otp`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ mobile, otp })
             });
-            navigate('/dashboard');
-        } else {
-            alert(t('invalidOtpAlert'));
+            const data = await response.json();
+
+            if (data.success) {
+                await loginUser({
+                    name,
+                    mobile,
+                    district: selectedDistrict,
+                    block: selectedBlock,
+                    village: selectedVillage,
+                    role: 'citizen'
+                });
+                navigate('/dashboard');
+            } else {
+                alert(t('invalidOtpAlert'));
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Error verifying OTP. Please try again.');
         }
     };
 
