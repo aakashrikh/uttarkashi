@@ -172,7 +172,7 @@ const WaitingRoom = () => {
     };
 
     // Complaint Form Component (reusable for both online and offline states)
-    const ComplaintForm = () => (
+    const renderComplaintForm = () => (
         <form onSubmit={handleSubmitGrievance} className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 grid md:grid-cols-2 gap-6">
             <div className="md:col-span-1">
                 <label className="block text-sm font-medium text-gray-700 mb-1">{t('emailLabel')}</label>
@@ -299,7 +299,7 @@ const WaitingRoom = () => {
                     </p>
                 </div>
 
-                <ComplaintForm />
+                {renderComplaintForm()}
             </div>
         );
     }

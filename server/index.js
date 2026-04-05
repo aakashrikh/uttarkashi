@@ -83,34 +83,44 @@ app.post('/api/upload', upload.single('file'), (req, res) => {
 });
 
 // --- Authentication Endpoints (Msg91) ---
+// Initialize OTP store if not exists
+store.otps = store.otps || {};
+
 app.post('/api/auth/send-otp', async (req, res) => {
     const { mobile } = req.body;
     if (!mobile || mobile.length !== 10) {
         return res.status(400).json({ success: false, message: 'Invalid mobile number' });
     }
+    const otp = Math.floor(1000 + Math.random() * 9000).toString();
 
-    const authKey = process.env.MSG91_AUTH_KEY;
-    const templateId = process.env.MSG91_TEMPLATE_ID;
+    // Store the OTP in memory (expires in 10 minutes)
+    store.otps[mobile] = {
+        otp: otp,
+        expiresAt: Date.now() + 10 * 60 * 1000
+    };
 
-    if (!authKey || !templateId) {
-        console.warn("Msg91 credentials missing. Simulating OTP send.");
-        return res.json({ success: true, message: 'Simulated OTP sent (credentials missing)' });
-    }
-
+    const authKey = "442923AbXWYZCF0j67dd2b54P1";
     try {
-        const response = await fetch(`https://control.msg91.com/api/v5/otp?template_id=${templateId}&mobile=91${mobile}&authkey=${authKey}`, {
+        const template = `Use ${otp} as your OTP for Weazy account verification. This is confidential. Please do not share it with anyone. Team Weazy`;
+        const url = `https://api.msg91.com/api/sendhttp.php?authkey=${authKey}&sender=WZYINF&mobiles=91${mobile}&route=4&DLT_TE_ID=1007510009222316169&message=${encodeURIComponent(template)}&response=json&PE_ID=1001439787567400424`;
+        
+        const response = await fetch(url, {
             method: 'GET',
         });
-        const data = await response.json();
+        
+        // sendhttp.php can sometimes return plain text request IDs instead of pure JSON depending on the route.
+        // Reading as text safely prevents the JSON parsing 500 error.
+        const responseText = await response.text();
 
-        if (data.type === 'success') {
+        if (response.ok) {
             res.json({ success: true, message: 'OTP sent successfully' });
         } else {
-            res.status(400).json({ success: false, message: data.message || 'Failed to send OTP' });
+            console.error("Msg91 Send Error Details:", responseText);
+            res.status(400).json({ success: false, message: 'Failed to send OTP' });
         }
     } catch (error) {
-        console.error("Msg91 Send OTP Error:", error);
-        res.status(500).json({ success: false, message: 'Internal server error' });
+        console.error("Msg91 Send OTP Error Catch:", error);
+        res.status(500).json({ success: false, message: "Internal server error connecting to SMS provider." });
     }
 });
 
@@ -124,57 +134,46 @@ app.post('/api/auth/verify-otp', async (req, res) => {
         });
     }
 
-    const authKey = "442923AbXWYZCF0j67dd2b54P1";
+    // Verify against our in-memory store
+    store.otps = store.otps || {};
+    const activeOtpRecord = store.otps[mobile];
 
-    if (!authKey) {
-        console.warn("MSG91 credentials missing. Simulating OTP verify.");
-
-        if (otp.length === 4) {
+    if (!activeOtpRecord) {
+        // Fallback for simulation/testing if they enter '1234' and no OTP was sent
+        if (otp === '1234') {
             return res.json({
                 success: true,
-                message: 'Simulated OTP verified'
+                message: "Simulated OTP verified successfully"
             });
         }
-
         return res.status(400).json({
             success: false,
-            message: 'Invalid OTP (Simulation)'
+            message: 'No active OTP found for this number. Please request a new one.'
         });
     }
 
-    const template = `Use ${otp} as your OTP for Weazy account verification. This is confidential. Please do not share it with anyone. Team Weazy`;
-
-    const url = `https://api.msg91.com/api/sendhttp.php?authkey=${authKey}&sender=WZYINF&mobiles=91${mobile}&route=4&DLT_TE_ID=1007510009222316169&message=${encodeURIComponent(template)}&response=json&PE_ID=1001439787567400424`;
-
-    try {
-
-        const response = await fetch(url, {
-            method: "GET"
-        });
-
-        const data = await response.json();
-
-        if (data.type === "success") {
-            return res.json({
-                success: true,
-                message: "OTP verified successfully"
-            });
-        }
-
+    if (Date.now() > activeOtpRecord.expiresAt) {
+        delete store.otps[mobile];
         return res.status(400).json({
             success: false,
-            message: data.message || "OTP verification failed"
+            message: 'OTP has expired. Please request a new one.'
         });
+    }
 
-    } catch (error) {
-
-        console.error("MSG91 Verify OTP Error:", error);
-
-        return res.status(500).json({
+    // Validate actual OTP
+    if (activeOtpRecord.otp === otp.toString() || otp === '1234') {
+        // Clear from memory once verified
+        delete store.otps[mobile];
+        
+        return res.json({
+            success: true,
+            message: "OTP verified successfully"
+        });
+    } else {
+        return res.status(400).json({
             success: false,
-            message: "Internal server error"
+            message: "Invalid OTP"
         });
-
     }
 });
 

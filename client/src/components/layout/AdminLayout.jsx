@@ -17,8 +17,8 @@ const AdminLayout = () => {
             <header className="relative z-50 pt-6 px-6">
                 <nav className="max-w-7xl mx-auto bg-white/80 backdrop-blur-xl border border-white/40 shadow-xl shadow-slate-200/50 rounded-2xl px-6 py-4 flex justify-between items-center transition-all duration-300 hover:shadow-2xl hover:shadow-slate-200/60 hover:-translate-y-0.5">
                     <div className="flex items-center gap-4">
-                        <div className="p-2 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-xl shadow-lg shadow-blue-500/20">
-                            <img src={logo} alt="Uttarakhand Govt" className="h-8 w-auto brightness-0 invert" />
+                        <div className="p-2 ">
+                            <img src={logo} alt="Uttarakhand Govt"  style={{width:'60px',height:'60px'}}/>
                         </div>
                         <div>
                             <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-700">DM Dashboard</h1>

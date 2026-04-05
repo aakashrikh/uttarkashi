@@ -7,7 +7,9 @@ const AdminGrievances = () => {
     useEffect(() => {
         socket.emit('get_grievances');
 
-        const handleGrievanceUpdate = (updatedGrievances) => setGrievances(updatedGrievances);
+        const handleGrievanceUpdate = (updatedGrievances) => {
+            setGrievances(Array.isArray(updatedGrievances) ? updatedGrievances : []);
+        };
         socket.on('grievance_update', handleGrievanceUpdate);
 
         return () => {
@@ -47,7 +49,9 @@ const AdminGrievances = () => {
                                         </p>
                                     </div>
                                     <span className="text-xs font-bold text-slate-400 bg-slate-50 px-2 py-1 rounded-lg border border-slate-100">
-                                        {new Date(g.timestamp).toLocaleDateString()} {new Date(g.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                        {g.timestamp && !isNaN(new Date(g.timestamp))
+                                            ? `${new Date(g.timestamp).toLocaleDateString()} ${new Date(g.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+                                            : 'No Date'}
                                     </span>
                                 </div>
 
@@ -57,7 +61,7 @@ const AdminGrievances = () => {
 
                                 {/* Files and Actions Toolbar */}
                                 <div className="flex flex-wrap items-center gap-3 border-t border-slate-50 pt-3">
-                                    {g.fileUrls && g.fileUrls.length > 0 ? (
+                                    {Array.isArray(g.fileUrls) && g.fileUrls.length > 0 ? (
                                         g.fileUrls.map((url, idx) => (
                                             <a key={idx} href={url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-xs font-bold text-blue-600 bg-blue-50 px-3 py-2 rounded-lg hover:bg-blue-100 transition border border-blue-100">
                                                 <span>📎</span> Document {idx + 1}
